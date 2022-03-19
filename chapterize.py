@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-# Concatenate audio files in m4b files and add chapter markers, if available.
 import argparse
 import glob
 import os
@@ -41,15 +40,27 @@ def concat_using_ffmpeg_filters(input_audio_files, output_filename, temp_metadat
            output_filename
 
 
+def get_element_from_metadata(element_name, metadata_lines, override):
+    if override is not None:
+        return override
+    derived_line = list(filter(lambda x: x.startswith(element_name), metadata_lines))
+    if len(derived_line) != 1:
+        print(f"Cannot find element {element_name} in metadata, reading 'unknown' instead")
+        return "unknown"
+    else:
+        return derived_line[0].split("=")[1].rstrip()
+
+
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Turn a set of audio files into a .m4b audiobook file")
     arg_parser.add_argument("output_filename", help="filename of the final m4b file, extension included")
     arg_parser.add_argument("input_files", help="glob for the input audio files, i.e. './test/*.mp3'")
     arg_parser.add_argument("--encoder", help="override default (aac) encoder")
-    # arg_parser.add_argument("--interactive", help="more verbosity and requires user intervention")
-    # arg_parser.add_argument("--author", help="override the author metadata")
-    # arg_parser.add_argument("--title", help="override the title metadata")
-    # arg_parser.add_argument("--keep_chapter_names", action="store_true", help="use title metadata from each file for chapter names")
+    arg_parser.add_argument("--interactive", help="more verbosity and requires user intervention")  # TODO: Implement.
+    arg_parser.add_argument("--author", help="override the author metadata")
+    arg_parser.add_argument("--title", help="override the title metadata")
+    arg_parser.add_argument("--keep_chapter_names", action="store_true",
+                            help="use title metadata from each file for chapter names") # TODO: Implement.
     args = arg_parser.parse_args()
 
     input_audio_glob = args.input_files
@@ -70,22 +81,31 @@ if __name__ == "__main__":
         files_metadata.append(FileMetadata(filename, cumulative_time, chapter_end_time))
         cumulative_time = chapter_end_time
 
-    metadata_command = f'ffmpeg -i "{input_audio_filenames[0]}" -f ffmetadata -v quiet -'
-    metadata = os.popen(metadata_command).read()
+    get_metadata_command = f'ffmpeg -i "{input_audio_filenames[0]}" -f ffmetadata -v quiet -'
+    initial_metadata = os.popen(get_metadata_command).readlines()
 
+    metadata = ";FFMETADATA1\n"
+    metadata += f"title={get_element_from_metadata('title', initial_metadata, args.title)}\n"
+    metadata += f"album={get_element_from_metadata('album', initial_metadata, args.title)}\n"
+    metadata += f"artist={get_element_from_metadata('artist', initial_metadata, args.author)}\n"
+
+    # Add all chapter markers to metadata
     # Timebase isn't set, so is defaulted to nanoseconds
     for i, file_metadata in enumerate(files_metadata):
         metadata += f'[CHAPTER]\nSTART={file_metadata.chapter_start_time_ns}\nEND={file_metadata.chapter_end_time_ns}\ntitle=Chapter {i + 1}\n'
 
-    temp_metadata = os.popen('mktemp').read().strip()
-    metafile = open(temp_metadata, 'w')
-    metafile.write(metadata)
-    metafile.close()
+    # Create a temp file to store new metadata
+    new_metadata_file_location = os.popen('mktemp').read().strip()
 
-    command = concat_using_ffmpeg_filters(input_audio_filenames, output_filename, temp_metadata, encoder)
+    # Write all the custom metadata to the new metadata file
+    new_metadata_file = open(new_metadata_file_location, 'w')
+    new_metadata_file.write(metadata)
+    new_metadata_file.close()
+
+    command = concat_using_ffmpeg_filters(input_audio_filenames, output_filename, new_metadata_file_location, encoder)
 
     os.system(command)
-    os.system('rm -fr ' + temp_metadata)
+    os.system('rm -fr ' + new_metadata_file_location)
 
     output_file_size_megabytes = os.path.getsize(output_filename) / BYTES_IN_ONE_MEGABYTE
 

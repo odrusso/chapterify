@@ -40,7 +40,7 @@ def concat_using_ffmpeg_filters(input_audio_files, output_filename, temp_metadat
            output_filename
 
 
-def get_element_from_metadata(element_name, metadata_lines, override):
+def get_element_from_metadata(element_name, metadata_lines, override=None):
     if override is not None:
         return override
     derived_line = list(filter(lambda x: x.startswith(element_name), metadata_lines))
@@ -51,16 +51,34 @@ def get_element_from_metadata(element_name, metadata_lines, override):
         return derived_line[0].split("=")[1].rstrip()
 
 
+def get_metadata_lines_from_file(filename):
+    get_metadata_command = f'ffmpeg -i "{filename}" -f ffmetadata -v quiet -'
+    return os.popen(get_metadata_command).readlines()
+
+
+def get_chapter_name(metadata: FileMetadata, i: int, keep_chapter_names: bool):
+    if keep_chapter_names:
+        lines = get_metadata_lines_from_file(metadata.filename)
+        expected_title = get_element_from_metadata("title", lines)
+        if expected_title == "unknown":
+            return f"Chapter {i + 1}"
+        else:
+            return expected_title
+    else:
+        return f"Chapter {i + 1}"
+
+
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Turn a set of audio files into a .m4b audiobook file")
     arg_parser.add_argument("output_filename", help="filename of the final m4b file, extension included")
     arg_parser.add_argument("input_files", help="glob for the input audio files, i.e. './test/*.mp3'")
     arg_parser.add_argument("--encoder", help="override default (aac) encoder")
-    arg_parser.add_argument("--interactive", help="more verbosity and requires user intervention")  # TODO: Implement.
     arg_parser.add_argument("--author", help="override the author metadata")
     arg_parser.add_argument("--title", help="override the title metadata")
+    arg_parser.add_argument("--interactive", action="store_true",
+                            help="more verbosity and requires user intervention")  # TODO: Implement, more.
     arg_parser.add_argument("--keep_chapter_names", action="store_true",
-                            help="use title metadata from each file for chapter names") # TODO: Implement.
+                            help="use title metadata from each file for chapter names")
     args = arg_parser.parse_args()
 
     input_audio_glob = args.input_files
@@ -81,9 +99,9 @@ if __name__ == "__main__":
         files_metadata.append(FileMetadata(filename, cumulative_time, chapter_end_time))
         cumulative_time = chapter_end_time
 
-    get_metadata_command = f'ffmpeg -i "{input_audio_filenames[0]}" -f ffmetadata -v quiet -'
-    initial_metadata = os.popen(get_metadata_command).readlines()
+    initial_metadata = get_metadata_lines_from_file(input_audio_filenames[0])
 
+    # Setup global metadata
     metadata = ";FFMETADATA1\n"
     metadata += f"title={get_element_from_metadata('title', initial_metadata, args.title)}\n"
     metadata += f"album={get_element_from_metadata('album', initial_metadata, args.title)}\n"
@@ -92,7 +110,13 @@ if __name__ == "__main__":
     # Add all chapter markers to metadata
     # Timebase isn't set, so is defaulted to nanoseconds
     for i, file_metadata in enumerate(files_metadata):
-        metadata += f'[CHAPTER]\nSTART={file_metadata.chapter_start_time_ns}\nEND={file_metadata.chapter_end_time_ns}\ntitle=Chapter {i + 1}\n'
+        metadata += f'[CHAPTER]\nSTART={file_metadata.chapter_start_time_ns}\nEND={file_metadata.chapter_end_time_ns}\ntitle={get_chapter_name(file_metadata, i, args.keep_chapter_names)}\n'
+
+    if args.interactive:
+        print("=" * 10 + "METADATA" + "=" * 10)
+        print(metadata)
+        print("=" * 10 + "END METADATA" + "=" * 10)
+        input("Press any key to continue...")
 
     # Create a temp file to store new metadata
     new_metadata_file_location = os.popen('mktemp').read().strip()

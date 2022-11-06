@@ -15,15 +15,25 @@ class FileMetadata(NamedTuple):
 
 
 def get_nanoseconds_for_file(file_name):
-    command = f"ffprobe -i '{file_name}' -show_entries format=duration"
+    if args.interactive:
+        print(f"Getting nanoseconds for {file_name}")
+        # input("Press any key to continue...")
+
+    command = f"ffprobe -i \"{file_name}\" -show_entries format=duration"
     raw_ffprobe_output = os.popen(command).readlines()
+
+    if args.interactive:
+        print(f"Nanosecond output for {file_name}")
+        print(raw_ffprobe_output)
+        # input("Press any key to continue...")
+
     time_seconds = float(raw_ffprobe_output[1].rstrip().split("=")[1])
     return int(time_seconds * NANOSECONDS_IN_ONE_SECOND)
 
 
 def concat_using_ffmpeg_filters(input_audio_files, output_filename, temp_metadata, audio_encoder="aac"):
     # We want -i file1.mp3 -i file2.mp3 -i file3.mp3 ... -i fileN.mp3
-    ffmpeg_input_audio_files = " -i '" + ("' -i '".join(input_audio_files)) + "'"
+    ffmpeg_input_audio_files = ' -i \"' + ('\" -i \"'.join(input_audio_files)) + '\"'
 
     # We want [0:0][1:0][2:0][3:0]... for each input file
     # For [x:y], x is the index of the input, and y is the number of video channels we want to encode.
@@ -33,7 +43,7 @@ def concat_using_ffmpeg_filters(input_audio_files, output_filename, temp_metadat
            ffmpeg_input_audio_files + \
            ' -i ' + temp_metadata + \
            f' -filter_complex \'{ffmpeg_filter_audio_channels}concat=n={len(input_audio_files)}:v=0:a=1[out]\'' + \
-           " -map '[out]'" + \
+           ' -map \"[out]\"' + \
            f' -map_metadata {len(input_audio_files)}' + \
            f' -c:a {audio_encoder} -vn' + \
            ' -aac_coder fast ' + \
@@ -88,6 +98,11 @@ if __name__ == "__main__":
     input_audio_filenames = glob.glob(input_audio_glob)
     input_audio_filenames.sort()
 
+    if args.interactive:
+        print("Files to be merged:")
+        [print(_) for _ in input_audio_filenames]
+        input("Press any key to continue...")
+
     if len(input_audio_filenames) == 0:
         print(f"No matching audio files were found")
         quit(1)
@@ -127,6 +142,11 @@ if __name__ == "__main__":
     new_metadata_file.close()
 
     command = concat_using_ffmpeg_filters(input_audio_filenames, output_filename, new_metadata_file_location, encoder)
+
+    if args.interactive:
+        print("Command to be run:")
+        print(command)
+        input("Press any key to continue...")
 
     os.system(command)
     os.system('rm -fr ' + new_metadata_file_location)

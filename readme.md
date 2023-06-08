@@ -25,7 +25,8 @@ As above, but will give you more opportunity to see what's happening, and stop t
 - `--encoder [ffmpeg-encoder]` lets you specify an ffmpeg encoder other than `aac`, for example `aac-at` maybe work best on macOS systems.
 - `--title [title]` overrides the automatically used title metadata, which is pulled from the first audio file
 - `--author [author]` overrides the automatically used author metadata, which is pulled from the first audio file
-- `--keep-chapter-names` will stop the default behaviour of using squential chapter numbering, and instead use the title metadata from each audio file
+- `--cover-image [image path]` lets you specify an image to be set as a thumbnail/cover
+- `--keep-chapter-names` will stop the default behaviour of using sequential chapter numbering, and instead use the title metadata from each audio file
 
 ### Thanks
 Inspired by [this repo](https://github.com/Geremia/chapterize). Thanks!

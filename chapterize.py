@@ -2,6 +2,7 @@
 import argparse
 import glob
 import os
+import uuid
 from typing import NamedTuple
 
 NANOSECONDS_IN_ONE_SECOND = 1e9
@@ -95,9 +96,9 @@ if __name__ == "__main__":
     input_audio_glob = args.input_files
 
     if args.cover_image:
-        output_filename = args.output_filename
-    else:
         output_filename = "temp-merged.m4b"
+    else:
+        output_filename = args.output_filename
 
     encoder = args.encoder if args.encoder is not None else "aac"
 
@@ -140,10 +141,10 @@ if __name__ == "__main__":
         input("Press any key to continue...")
 
     # Create a temp file to store new metadata
-    new_metadata_file_location = os.popen('mktemp').read().strip()
+    new_metadata_file_location = "metadata-" + str(uuid.uuid4()) + ".txt"
 
     # Write all the custom metadata to the new metadata file
-    new_metadata_file = open(new_metadata_file_location, 'w')
+    new_metadata_file = open(new_metadata_file_location, 'w+')
     new_metadata_file.write(metadata)
     new_metadata_file.close()
 
@@ -156,7 +157,6 @@ if __name__ == "__main__":
 
     os.system(command)
     os.system('rm -fr ' + new_metadata_file_location)
-
 
     if args.cover_image:
         # Rerender the file with cover art

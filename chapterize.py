@@ -2,6 +2,7 @@
 import argparse
 import glob
 import os
+import uuid
 from typing import NamedTuple
 
 NANOSECONDS_IN_ONE_SECOND = 1e9
@@ -85,6 +86,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("--encoder", help="override default (aac) encoder")
     arg_parser.add_argument("--author", help="override the author metadata")
     arg_parser.add_argument("--title", help="override the title metadata")
+    arg_parser.add_argument("--cover_image", help="path to a jpg/png to embed as cover art")
     arg_parser.add_argument("--interactive", action="store_true",
                             help="more verbosity and requires user intervention")  # TODO: Implement, more.
     arg_parser.add_argument("--keep_chapter_names", action="store_true",
@@ -92,7 +94,12 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     input_audio_glob = args.input_files
-    output_filename = args.output_filename
+
+    if args.cover_image:
+        output_filename = "temp-merged.m4b"
+    else:
+        output_filename = args.output_filename
+
     encoder = args.encoder if args.encoder is not None else "aac"
 
     input_audio_filenames = glob.glob(input_audio_glob)
@@ -134,10 +141,10 @@ if __name__ == "__main__":
         input("Press any key to continue...")
 
     # Create a temp file to store new metadata
-    new_metadata_file_location = os.popen('mktemp').read().strip()
+    new_metadata_file_location = "metadata-" + str(uuid.uuid4()) + ".txt"
 
     # Write all the custom metadata to the new metadata file
-    new_metadata_file = open(new_metadata_file_location, 'w')
+    new_metadata_file = open(new_metadata_file_location, 'w+')
     new_metadata_file.write(metadata)
     new_metadata_file.close()
 
@@ -150,6 +157,22 @@ if __name__ == "__main__":
 
     os.system(command)
     os.system('rm -fr ' + new_metadata_file_location)
+
+    if args.cover_image:
+        # Rerender the file with cover art
+        print("todo")
+        cover_command = f"ffmpeg -i \"{output_filename}\" -i \"{args.cover_image}\" -map 0 -map 1 -c copy -dn -disposition:v:0 attached_pic \"cover-{output_filename}\""
+
+        if args.interactive:
+            print("Will attempt cover: " + args.cover_image)
+            print("With command " + cover_command)
+            print(cover_command)
+            input("Press any key to continue...")
+
+        os.system(cover_command)
+        os.system(f"rm -f \"{output_filename}\"")
+        os.system(f"mv \"cover-{output_filename}\" \"{args.output_filename}\"")
+        output_filename = args.output_filename
 
     output_file_size_megabytes = os.path.getsize(output_filename) / BYTES_IN_ONE_MEGABYTE
 

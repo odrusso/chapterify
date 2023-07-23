@@ -1,23 +1,20 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"],
-    "module": "esnext",
-    "target": "esnext",
-    "moduleResolution": "node",
-    "allowImportingTsExtensions": true,
-    "esModuleInterop": true,
-    "strict": true,
-    "downlevelIteration": true,
-    "skipLibCheck": true,
-    "jsx": "preserve",
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "ES6",
     "allowJs": true,
-    "noEmit": true,
-    "types": [
-      "node"
-    ]
+    "module": "commonjs",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
   },
-  "include": ["*.ts", "/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"]
 }

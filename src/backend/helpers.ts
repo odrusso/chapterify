@@ -2,7 +2,7 @@ import {glob} from "glob";
 import {orderBy} from "natural-orderby";
 import {randomUUID} from "crypto";
 import {promises as fs} from "fs";
-import {execute, executeResult} from "./os.ts";
+import {execute, executeResult} from "./os";
 
 const NANOSECONDS_IN_ONE_SECOND: number = 1e9
 const NANOS_IN_ONE_MINUTE: number = 60 * NANOSECONDS_IN_ONE_SECOND
@@ -96,7 +96,7 @@ const buildMetadataForFiles = async (filenames: string[]) => {
     return fileMetadata;
 };
 
-const printProgress = (log: string, totalNanos: number, startTime: number) => {
+const printProgress = (log: string, totalNanos: number, startTime: number, printer: Function) => {
     if (!log.startsWith("size=")) return
 
     const extractedTime: string[] | undefined = getMetadataElement('time', log.split(" "))?.split(":")
@@ -112,10 +112,10 @@ const printProgress = (log: string, totalNanos: number, startTime: number) => {
     const estTotalTimeSeconds = currentRuntimeSeconds / currentPercentageCompleteDec
     const estRemainingTime = Math.round(estTotalTimeSeconds - currentRuntimeSeconds)
 
-    console.log(`Progress: [${'='.repeat(totalOf25)}${' '.repeat(25 - totalOf25)}] (${Math.round(currentPercentageCompleteDec * 100)}%) (${estRemainingTime} est remaining)`)
+    printer(`Progress: [${'='.repeat(totalOf25)}${' '.repeat(25 - totalOf25)}] (${Math.round(currentPercentageCompleteDec * 100)}%) (${estRemainingTime} est remaining)`)
 }
 
-export const merge = async (inputGlob: string, outputFileName: string, coverImage?: string) => {
+export const merge = async (inputGlob: string, outputFileName: string, coverImage?: string, printCallbackOverride?: Function) => {
     const inputAudioFilenames = await glob(inputGlob)
     const sortedInputAudioFilenames = orderBy(inputAudioFilenames)
 
@@ -132,12 +132,14 @@ export const merge = async (inputGlob: string, outputFileName: string, coverImag
 
     const command = buildFfmpegCommand(sortedInputAudioFilenames, outputFileName, metadataFileName)
 
-    const printCallback = (stderr: string) => printProgress(stderr, fileMetadata[fileMetadata.length - 1].chapterEndTimeNs, startTime)
+    const printCallback = (stderr: string) => printProgress(stderr, fileMetadata[fileMetadata.length - 1].chapterEndTimeNs, startTime, printCallbackOverride ?? console.log)
 
     const startTime = Date.now()
     await execute(command, printCallback)
 
     await fs.unlink(metadataFileName)
+
+    console.log("Done")
 
     if (!coverImage) return
     const renderWithCoverCommand = buildCoverCommand(coverImage!, outputFileName)

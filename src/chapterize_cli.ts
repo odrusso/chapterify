@@ -1,5 +1,5 @@
 import {program} from "commander";
-import {merge} from "./helpers.ts";
+import {merge} from "./backend/helpers";
 
 program
     .name("Chapterify")
@@ -14,4 +14,4 @@ const outputFileName = program.args[0]
 const inputGlob = program.args[1]
 const coverImage = program.opts().coverImage
 
-await merge(inputGlob, outputFileName, coverImage)
+merge(inputGlob, outputFileName, coverImage)

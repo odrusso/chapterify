@@ -36,14 +36,16 @@ export const App = () => {
 
     return (
         <>
-            <h1>Chapterify</h1>
-            <button onClick={getFileLocation}>Select folder containing mp3 files</button>
-            <p>{fileLocation}</p>
-            <button onClick={getSaveLocation}>Select save m4b file destination</button>
-            <p>{saveLocation}</p>
-            <button onClick={merge}>Merge</button>
-            <br />
-            <h2>{progress}</h2>
+            <center>
+                <h1>Chapterify</h1>
+                <button onClick={getFileLocation}>Select folder containing mp3 files</button>
+                <p>{fileLocation}</p>
+                <button onClick={getSaveLocation}>Select save m4b file destination</button>
+                <p>{saveLocation}</p>
+                <button onClick={merge}>Merge</button>
+                <br />
+                <h2>{progress}</h2>
+            </center>
         </>
     )
 }

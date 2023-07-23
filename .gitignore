@@ -5,4 +5,5 @@
 **/*.mp3
 test_files/
 /node_modules/
-.webpack
+.webpack/
+out/

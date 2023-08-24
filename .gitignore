@@ -2,4 +2,8 @@
 .DS_Store
 **/.DS_Store
 **/*.m4b
+**/*.mp3
 test_files/
+/node_modules/
+.webpack/
+out/
